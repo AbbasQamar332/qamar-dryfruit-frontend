@@ -5,7 +5,7 @@ import { useSettings } from "@/hooks/useData";
 
 export default function HeroSection() {
   const { data: settings, isLoading } = useSettings();
-
+  console.log(settings?.hero_banner_url);
   if (isLoading) {
     return (
       <section id="home" className="relative min-h-screen flex items-center justify-center bg-muted">
@@ -20,8 +20,6 @@ export default function HeroSection() {
         <img
           src={settings?.hero_banner_url || heroBanner}
           alt="Zeshan Dry Fruit products"
-          width={1920}
-          height={1080}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-foreground/70 via-foreground/50 to-foreground/80" />

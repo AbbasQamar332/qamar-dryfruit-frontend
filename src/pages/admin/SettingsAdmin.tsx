@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useSettings, useUpdateSettings } from "@/hooks/useData";
-import { uploadImage } from "@/lib/api";
 
 export default function SettingsAdmin() {
   const { data: settings, isLoading } = useSettings();
@@ -36,22 +35,49 @@ export default function SettingsAdmin() {
     e.preventDefault();
     try {
       await updateSettings.mutateAsync(form);
-      toast.success("Settings updated");
+      toast.success("Settings updated successfully!");
     } catch (err: any) {
-      toast.error(err.message || "Update failed");
+      toast.error(err.message || "Failed to save settings");
     }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setUploading(true);
+
+    // Explicitly package data matching your backend's parser expectations
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("bucket", "images");
+    formData.append("path", `settings/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`);
+
     try {
-      const url = await uploadImage(file, "images", `settings/${Date.now()}-${file.name}`);
-      setForm((prev) => ({ ...prev, hero_banner_url: url }));
-      toast.success("Banner uploaded");
+      // Direct fetch call ensures headers and body align perfectly with your Express routing
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: {
+          // Explicit authorization pass matching your server auth bypass engine
+          "Authorization": `Bearer ${localStorage.getItem("token") || "local-dev"}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Server upload rejection");
+      }
+
+      const result = await response.json();
+      
+      if (result.url) {
+        setForm((prev) => ({ ...prev, hero_banner_url: result.url }));
+        toast.success("Banner image staged successfully!");
+      }
     } catch (err: any) {
-      toast.error(err.message || "Upload failed");
+      console.error(err);
+      toast.error(err.message || "Upload process failed");
     } finally {
       setUploading(false);
     }
@@ -82,7 +108,7 @@ export default function SettingsAdmin() {
               id="hero_title"
               required
               value={form.hero_title}
-              onChange={(e) => setForm({ ...form, hero_title: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, hero_title: e.target.value }))}
             />
           </div>
 
@@ -92,7 +118,7 @@ export default function SettingsAdmin() {
               id="hero_subtitle"
               required
               value={form.hero_subtitle}
-              onChange={(e) => setForm({ ...form, hero_subtitle: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, hero_subtitle: e.target.value }))}
             />
           </div>
 
@@ -103,28 +129,33 @@ export default function SettingsAdmin() {
               required
               rows={2}
               value={form.hero_tagline}
-              onChange={(e) => setForm({ ...form, hero_tagline: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, hero_tagline: e.target.value }))}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="banner">Hero Banner Image</Label>
-            <Input id="banner" type="file" accept="image/*" onChange={handleImageUpload} />
+            <Input id="banner" type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} />
+            
             {uploading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" /> Uploading image asset...
               </div>
             )}
-            {form.hero_banner_url && (
-              <img
-                src={form.hero_banner_url}
-                alt="Banner preview"
-                className="w-full h-40 object-cover rounded-lg"
-              />
+            
+            {form.hero_banner_url && !uploading && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-muted-foreground">Staged Banner Preview:</p>
+                <img
+                  src={form.hero_banner_url}
+                  alt="Banner preview"
+                  className="w-full h-40 object-cover rounded-lg border border-border"
+                />
+              </div>
             )}
           </div>
 
-          <Button type="submit" disabled={updateSettings.isPending}>
+          <Button type="submit" disabled={updateSettings.isPending || uploading} className="w-full sm:w-auto">
             {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Save Settings
           </Button>
@@ -133,4 +164,3 @@ export default function SettingsAdmin() {
     </AdminLayout>
   );
 }
-

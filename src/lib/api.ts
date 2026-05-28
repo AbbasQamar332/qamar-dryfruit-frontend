@@ -331,13 +331,15 @@ export const updateSettings = (settings: any) =>
   );
 
 // ===== FILE UPLOAD (always uses backend for now) =====
-export const uploadImage = async (file: File, _bucket: string, _path: string) => {
+export const uploadImage = async (file: File, bucket: string, path: string) => {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("bucket", bucket); // Pass metadata if backend expects it
+  formData.append("path", path);
+
+  // Notice the matching '/api/upload' prefix if your base URL doesn't include /api
   const { data } = await api.post("/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-  return data.url;
+  return data.url; 
 };
-
-export default api;

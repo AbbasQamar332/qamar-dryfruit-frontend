@@ -19,41 +19,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ===== SINGLE CONSOLIDATED SESSION WATCHER =====
-  useEffect(() => {
-    // Check if a local bypass token is currently stored
-    const localToken = localStorage.getItem("token");
-    
-    if (localToken === "local-dev") {
-      setUser({
-        id: "00000000-0000-0000-0000-000000000000",
-        email: "qamar@gmail.com",
-        user_metadata: { role: "admin" },
-        app_metadata: { role: "admin" },
-      } as any);
-      setSession({ access_token: "local-dev" } as any);
-      setLoading(false);
-      return; // Stop execution here for static local mode
+ useEffect(() => {
+  const localToken = localStorage.getItem("token");
+  
+  if (localToken === "local-dev") {
+    setUser({
+      id: "00000000-0000-0000-0000-000000000000",
+      email: "qamar@gmail.com",
+      user_metadata: { role: "admin" },
+      app_metadata: { role: "admin" },
+    } as any);
+    setSession({ access_token: "local-dev" } as any);
+    setLoading(false);
+    return; 
+  }
+
+  // Combine the initial load check inside the listener
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    if (localStorage.getItem("token") !== "local-dev") {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setLoading(false); // <--- Make sure loading turns false here!
     }
+  });
 
-    // Otherwise, sync normally with real Supabase Cloud Session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (localStorage.getItem("token") !== "local-dev") {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (localStorage.getItem("token") !== "local-dev") {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  return () => subscription.unsubscribe();
+}, []);
 
   // Admin check: hardcoded emails OR user metadata role === 'admin'
   const adminEmails = ["sheikhuqamar@gmail.com", "admin@zeshandryfruit.com", "qamar@gmail.com"];
