@@ -35,6 +35,14 @@ export default function Login() {
         if (!res.ok) {
           toast.error(data.error || "Failed to create admin");
         } else {
+          // Keep dev bypass token in sync with AuthContext localStorage check
+          if (data?.token === "local-dev") {
+            localStorage.setItem("token", "local-dev");
+            toast.success("Admin created! Local dev login bypass enabled.");
+            navigate("/dashboard");
+            return;
+          }
+
           toast.success(data.message || "Admin created! You can now sign in.");
           setMode("signin");
         }
