@@ -5,17 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useCreateMessage } from "@/hooks/useData";
+import { useCreateMessage, useSettings } from "@/hooks/useData";
 
-const contacts = [
-  { icon: Phone, title: "Phone", lines: ["+92 347 8094332", "+92 317 5668498"] },
-  { icon: MapPin, title: "Location", lines: ["Gilgit Baltistan, Pakistan"] },
-  { icon: Clock, title: "Working Hours", lines: ["Mon - Sat: 9:00 AM - 8:00 PM"] },
-  { icon: Mail, title: "Email", lines: ["sheikhuqamar@gmail.com"] },
-];
+function splitCsv(s?: string | null) {
+  if (!s) return [];
+  return String(s)
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
 
 export default function ContactSection() {
   const createMessage = useCreateMessage();
+  const { data: settings } = useSettings();
   const [form, setForm] = useState({ name: "", email: "", message: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,17 +46,40 @@ export default function ContactSection() {
         <div className="grid lg:grid-cols-2 gap-12 max-w-5xl mx-auto">
           {/* Contact Info Cards */}
           <div className="grid sm:grid-cols-2 gap-6">
-            {contacts.map((c) => (
-              <div key={c.title} className="bg-card rounded-xl p-6 border border-border text-center hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <c.icon className="h-5 w-5 text-primary" />
+            {[
+              {
+                icon: Phone,
+                title: "Phone",
+                lines: splitCsv(settings?.phone_numbers),
+              },
+              {
+                icon: Mail,
+                title: "Email",
+                lines: splitCsv(settings?.email_addresses),
+              },
+              {
+                icon: MapPin,
+                title: "Location",
+                lines: settings?.physical_address ? [String(settings.physical_address)] : ["Gilgit Baltistan, Pakistan"],
+              },
+              {
+                icon: Clock,
+                title: "Working Hours",
+                lines: ["Mon - Sat: 9:00 AM - 8:00 PM"],
+              },
+            ]
+              .filter((c) => c.lines.length > 0)
+              .map((c) => (
+                <div key={c.title} className="bg-card rounded-xl p-6 border border-border text-center hover:shadow-lg transition-shadow">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <c.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-2">{c.title}</h3>
+                  {c.lines.map((line) => (
+                    <p key={line} className="text-sm text-muted-foreground">{line}</p>
+                  ))}
                 </div>
-                <h3 className="font-semibold text-foreground mb-2">{c.title}</h3>
-                {c.lines.map((line) => (
-                  <p key={line} className="text-sm text-muted-foreground">{line}</p>
-                ))}
-              </div>
-            ))}
+              ))}
           </div>
 
           {/* Contact Form */}
